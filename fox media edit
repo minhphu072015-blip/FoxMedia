@@ -1,0 +1,60 @@
+
+====================== REPLACE FILE: server/db.ts ======================
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = "postgresql://postgres:123456@localhost:5432/foxmedia";
+}
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+export const db = drizzle(pool);
+
+
+====================== REPLACE FILE: server/storage.ts ======================
+import fs from "fs";
+import path from "path";
+
+const uploadDir = path.join(process.cwd(), "uploads");
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+export async function uploadFile(file: Express.Multer.File) {
+  const filename = Date.now() + "-" + file.originalname;
+  const filepath = path.join(uploadDir, filename);
+
+  fs.writeFileSync(filepath, file.buffer);
+
+  return "/uploads/" + filename;
+}
+
+
+====================== MODIFY FILE: server/index.ts ======================
+After const app = express(); add:
+
+app.use("/uploads", express.static("uploads"));
+app.use(express.json({ limit: "10mb" }));
+
+
+====================== MODIFY FILE: server/routes.ts ======================
+Replace all authentication checks with:
+
+req.user = { id: 1 };
+
+
+====================== CREATE FILE: .env ======================
+NODE_ENV=development
+PORT=3000
+DATABASE_URL=postgresql://postgres:123456@localhost:5432/foxmedia
+SESSION_SECRET=devsecret
+
+
+====================== MODIFY FRONTEND: client/src/lib/queryClient.ts ======================
+Replace fetch("/api/") with:
+
+fetch("http://localhost:3000/api/")
